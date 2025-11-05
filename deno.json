@@ -1,0 +1,19 @@
+{
+  "tasks": {
+    "dev": "deno run --allow-net --allow-read --allow-env --allow-write --allow-sys --env-file --watch src/main.ts",
+    "start": "deno run --allow-net --allow-read --allow-env --allow-write --allow-sys --env-file src/main.ts"
+  },
+  "nodeModulesDir": "auto",
+  "imports": {
+    "@hono/hono": "jsr:@hono/hono@^4.10.4",
+    "@mysten/bcs": "npm:@mysten/bcs@^1.8.0",
+    "@mysten/sui": "npm:@mysten/sui@^1.39.0",
+    "@mysten/walrus": "npm:@mysten/walrus@^0.7.1",
+    "@std/assert": "jsr:@std/assert@1",
+    "bcrypt": "npm:bcrypt@^6.0.0",
+    "djwt": "npm:djwt@^2.0.0",
+    "hono": "npm:hono@^4.9.9",
+    "mongodb": "npm:mongodb@6.1.0",
+    "pg": "npm:pg@^8.16.3"
+  }
+}
