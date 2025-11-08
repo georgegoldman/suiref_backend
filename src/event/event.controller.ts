@@ -2,6 +2,7 @@
 import { Context } from "@hono/hono";
 import { Event } from "./event.interface.ts";
 import { EventService } from "./event.service.ts";
+import { ref } from "node:process";
 
 
 export class EventController {
@@ -31,7 +32,7 @@ export class EventController {
                 requireApproval,
                 capacity,
                 imageUrl,
-                leaderBoard: []
+                attending: []
             });
 
             return c.json({
@@ -96,6 +97,79 @@ export class EventController {
             }else {
                 console.log(error)
             }
+        }
+    }
+
+    async joinEvent(c: Context) {
+        try {
+            const { eventId, username, referrer } = await c.req.json();
+            const result = await this.eventService.joinEvent(eventId, username, referrer);
+            return c.json({
+                data: result
+            })
+        } catch (error: any) {
+            if (error.message === "user already attending") return c.newResponse("Duplicate record", {status: 409});
+            else if(error.message === "No such event") return c.newResponse("Resource missing", {status: 409});
+            else console.log(error)
+        }
+    }
+
+    async leave(c: Context) {
+        try {
+            const { eventId, username } = await c.req.json();
+            const result = await this.eventService.removeAttendee(eventId, username);
+            return c.json(
+                {
+                    data: result
+                }
+            );
+        } catch(error: any) {
+            if (error.message === "No such event") return c.newResponse("Resource missing", {status: 409});
+            if (error.message === "No such username") return c.newResponse("Resource missing", {status: 409});
+        }
+    }
+
+    async postLeaderboard(c: Context) {
+        try {
+            const { referral, eventId } = await c.req.json();
+            const result  = await this.eventService.createLeaderboard(referral, eventId);
+            return c.json({
+                data: result
+            })
+        } catch (error: any) {
+            if (error.message === "user already exist in leaderboard") return c.newResponse("Duplicate record", {status: 409});
+            else if(error.message === "there is no such event") return c.newResponse("Resource missing", {status: 404});
+            else if (error.message === "Error editing this data") return c.newResponse("Bad input or internal error", {status: 400});
+            else if (error.message === "Unable to create leaderboard") return c.newResponse("Failed to process request", {status: 500});
+            else console.log(error)
+        }
+    }
+
+    async writePoint(c: Context) {
+        try {
+            const { referral, eventId } = await c.req.json();
+            const result = await this.eventService.addPoint(referral, eventId);
+            return c.json({
+                data: result
+            })
+        } catch (error: any) {
+            if (error.message === "there is a problem adding points") return c.newResponse("Invalid data: unable to add points", {status: 400});
+            else if (error.message === "user already exist in leaderboard") return c.newResponse("Duplicate record", {status: 409});
+            else if(error.message === "there is no such event") return c.newResponse("Resource missing", {status: 404});
+            else if (error.message === "Error editing this data") return c.newResponse("Bad input or internal error", {status: 400});
+            else if (error.message === "Unable to create leaderboard") return c.newResponse("Failed to process request", {status: 500});
+            else console.log(error)
+        }
+    }
+
+    async getAllLeaderboard(c: Context) {
+        try {
+            const result  = await this.eventService.readAllLeaderboard();
+            return c.json({
+                data: result
+            })
+        } catch (error: any) {
+            console.log(error)
         }
     }
 }

@@ -54,6 +54,31 @@ export class EventService {
         return result;
     }
 
+    async joinEvent(eventId:string, username: string, referrer?: string): Promise<any> {
+        const e = await this.eventCollection.findOne({_id: new ObjectId(eventId)}); // get the event
+        if (!e) throw new Error("No such event");
+        e.attending.forEach((x) => {if(x?.username === username) throw new Error("user already attending")}); // check if the use is already attending the event
+        const ue = await this.eventCollection.updateOne({_id: e._id}, // updated event 
+            {$push: {attending: {username, referrer, eventId: new ObjectId(eventId)}}}
+        );
+        if (ue.acknowledged) if(referrer) await this.addPoint(referrer, eventId);
+        return ue
+    }
+
+    async removeAttendee(eventId: string, username: string): Promise<any> {
+        const e = await this.eventCollection.findOne({_id: new ObjectId(eventId)});
+        if (!e) throw new Error("No such event");
+        e.attending.forEach((x) => async () =>{
+            if (x?.username === username) {
+                const ue = await this.eventCollection.updateOne({_id: e._id},
+                    {$pull: { username }}
+                );
+                return ue
+            }
+        });
+        throw new Error("No such username");
+    }
+
     async createLeaderboard(referrer: string, eventId: string): Promise<any>{
         // check if the user already exist on the leaderboard
         const l = await this.leaderboardCollection.findOne(
@@ -73,7 +98,7 @@ export class EventService {
             if (!e) throw new Error("there is no such event");
             const ue = await this.eventCollection.updateOne(
                 {_id: e._id},
-                {leaderBoard: nl.insertedId}
+                {$set: {leaderBoard: nl.insertedId}}
             );
             if(!ue.acknowledged) throw new Error("Error editing this data");
             return nl
@@ -89,12 +114,21 @@ export class EventService {
         if (!uInLb) return this.leaderboardCollection.insertOne(
             {username: referral, point: 1, eventId: new ObjectId(eventId)}
         );
-        uInLb.point++;
+        
         const upUInLb  = await this.leaderboardCollection.updateOne( // updated user in leaderboard
             {username: referral, eventId: new ObjectId(eventId)},
-            {point: uInLb.point}
+            {
+                $inc: {point: 1},
+                $setOnInsert: { eventId: new ObjectId(eventId), username: referral }
+            },
+            {upsert: true}
         );
         if(!upUInLb.acknowledged) throw new Error("there is a problem adding points");
         return upUInLb;
+    }
+
+    async readAllLeaderboard(): Promise<any> {
+        const lb = await this.leaderboardCollection.find().toArray();
+        return lb;
     }
 }

@@ -12,6 +12,13 @@ export interface Event {
     capacity: number,
     imageUrl: string,
     leaderBoard?: ObjectId // referral leaderboard
+    attending: [Attending?]
+}
+
+export interface Attending {
+    username: string,
+    referrer?: string,
+    eventId: ObjectId
 }
 
 export interface Leaderboard {
