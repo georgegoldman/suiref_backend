@@ -1,5 +1,6 @@
 import { Hono } from "@hono/hono";
 import eventRouter from "./event/event.route.ts";
+import userRouter from "./user/user.router.ts";
 
 const app = new Hono()
 
@@ -9,6 +10,7 @@ app.use('*', async (c, next) => {
 })
 
 app.route("/api", eventRouter);
+app.route("/api", userRouter)
 
 app.notFound((c) => {
   console.log('NOT FOUND:', c.req.method, c.req.path);

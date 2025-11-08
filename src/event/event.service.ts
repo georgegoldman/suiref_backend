@@ -53,4 +53,48 @@ export class EventService {
         });
         return result;
     }
+
+    async createLeaderboard(referrer: string, eventId: string): Promise<any>{
+        // check if the user already exist on the leaderboard
+        const l = await this.leaderboardCollection.findOne(
+            {username: referrer}
+        );
+        // if the user is in the leaderboard throw an error
+        if (l) throw new Error("user already exist in leaderboard");
+        const nl = await this.leaderboardCollection.insertOne({
+            username: referrer,
+            point: 1,
+            eventId: new ObjectId(eventId)
+        });
+        if (nl.insertedId){
+            // lookup the event
+            const e = await this.eventCollection.findOne({_id: new ObjectId(eventId)});
+            // is this event existing ?
+            if (!e) throw new Error("there is no such event");
+            const ue = await this.eventCollection.updateOne(
+                {_id: e._id},
+                {leaderBoard: nl.insertedId}
+            );
+            if(!ue.acknowledged) throw new Error("Error editing this data");
+            return nl
+        }
+        throw new Error("Unable to create leaderboard");
+    }
+
+    async addPoint(referral: string, eventId: string): Promise<any> {
+        // check if the lb exist firt of
+        const lb = await this.leaderboardCollection.findOne({eventId: new ObjectId(eventId)}); // leaderboard
+        if (!lb) return this.createLeaderboard(referral, eventId);
+        const uInLb = await this.leaderboardCollection.findOne({username: referral, _id: new ObjectId(lb._id)}); // user in leaderbaord
+        if (!uInLb) return this.leaderboardCollection.insertOne(
+            {username: referral, point: 1, eventId: new ObjectId(eventId)}
+        );
+        uInLb.point++;
+        const upUInLb  = await this.leaderboardCollection.updateOne( // updated user in leaderboard
+            {username: referral, eventId: new ObjectId(eventId)},
+            {point: uInLb.point}
+        );
+        if(!upUInLb.acknowledged) throw new Error("there is a problem adding points");
+        return upUInLb;
+    }
 }

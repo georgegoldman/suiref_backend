@@ -11,7 +11,7 @@ export interface Event {
     requireApproval: boolean,
     capacity: number,
     imageUrl: string,
-    leaderBoard: [ObjectId?] // referral leaderboard
+    leaderBoard?: ObjectId // referral leaderboard
 }
 
 export interface Leaderboard {
