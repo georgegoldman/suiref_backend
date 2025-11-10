@@ -1,14 +1,18 @@
 // deno-lint-ignore-file no-explicit-any
 
 import { Collection, Db, ObjectId } from "mongodb";
-import { Event, Leaderboard } from "./event.interface.ts"
+import { Attending, Event, Leaderboard } from "./event.interface.ts"
+import { UserService } from "../user/user.service.ts";
 
-export class EventService {
+
+export class EventService  {
     private readonly eventCollection: Collection<Event>;
     private readonly leaderboardCollection: Collection<Leaderboard>;
+    private readonly userService: UserService;
     constructor(private readonly db: Db) {
         this.eventCollection = db.collection<Event>('event');
         this.leaderboardCollection = db.collection<Leaderboard>('leaderboard')
+        this.userService = new UserService(db);
     }
 
     async createEvent(event: Event):Promise<any> {
@@ -55,28 +59,38 @@ export class EventService {
     }
 
     async joinEvent(eventId:string, username: string, referrer?: string): Promise<any> {
+        if (username == referrer) throw new Error("Self-reference is not allowed.")
         const e = await this.eventCollection.findOne({_id: new ObjectId(eventId)}); // get the event
         if (!e) throw new Error("No such event");
-        e.attending.forEach((x) => {if(x?.username === username) throw new Error("user already attending")}); // check if the use is already attending the event
-        const ue = await this.eventCollection.updateOne({_id: e._id}, // updated event 
-            {$push: {attending: {username, referrer, eventId: new ObjectId(eventId)}}}
+        
+        const uByu = await this.userService.getUserByUsername(username);
+        if (!uByu) throw new Error("No matching user record found.");
+
+        const already = await this.eventCollection.findOne({
+            _id: new ObjectId(eventId),
+            "attending.username": username
+        });
+        if (already) throw new Error("Duplicate attendance detected.");
+
+        
+        const ue = await this.eventCollection.updateOne(
+            { _id: new ObjectId(eventId) },
+            { $push: { attending: { username, referrer, eventId: new ObjectId(eventId) } } }
         );
-        if (ue.acknowledged) if(referrer) await this.addPoint(referrer, eventId);
+        if (ue.matchedCount === 0) throw new Error("No matching user record found.");
+        else if (ue.modifiedCount === 0) if(referrer) await this.addPoint(referrer, eventId);
         return ue
     }
 
     async removeAttendee(eventId: string, username: string): Promise<any> {
-        const e = await this.eventCollection.findOne({_id: new ObjectId(eventId)});
-        if (!e) throw new Error("No such event");
-        e.attending.forEach((x) => async () =>{
-            if (x?.username === username) {
-                const ue = await this.eventCollection.updateOne({_id: e._id},
-                    {$pull: { username }}
-                );
-                return ue
-            }
-        });
-        throw new Error("No such username");
+        const r = await this.eventCollection.updateOne({_id: new ObjectId(eventId)},
+            {$pull: {attending: {username}}}
+        );
+        if (r.matchedCount === 0) throw new Error("No such event");
+        else if (r.modifiedCount === 0) throw new Error("No such username");
+        else if (!r.acknowledged) throw new Error("Remove operation failed");
+        return r
+
     }
 
     async createLeaderboard(referrer: string, eventId: string): Promise<any>{
@@ -108,6 +122,7 @@ export class EventService {
 
     async addPoint(referral: string, eventId: string): Promise<any> {
         // check if the lb exist firt of
+        
         const lb = await this.leaderboardCollection.findOne({eventId: new ObjectId(eventId)}); // leaderboard
         if (!lb) return this.createLeaderboard(referral, eventId);
         const uInLb = await this.leaderboardCollection.findOne({username: referral, _id: new ObjectId(lb._id)}); // user in leaderbaord
@@ -130,5 +145,10 @@ export class EventService {
     async readAllLeaderboard(): Promise<any> {
         const lb = await this.leaderboardCollection.find().toArray();
         return lb;
+    }
+
+    async getAttendingUser(id: string): Promise<any> {
+        const event  = await this.eventCollection.findOne({_id: new ObjectId(id)});
+        return event?.attending
     }
 }

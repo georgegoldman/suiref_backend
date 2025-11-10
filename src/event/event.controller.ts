@@ -108,8 +108,11 @@ export class EventController {
                 data: result
             })
         } catch (error: any) {
-            if (error.message === "user already attending") return c.newResponse("Duplicate record", {status: 409});
-            else if(error.message === "No such event") return c.newResponse("Resource missing", {status: 409});
+            if (error.message === "Duplicate attendance detected.") return c.newResponse(error.message, {status: 409});
+            else if (error.message === "Self-reference is not allowed.") return c.newResponse(error.message, {status: 409})
+            else if(error.message === "No such event") return c.newResponse(error.message, {status: 409});
+            else if (error.message === "No matching user record found.") return c.newResponse(error.message, {status: 409})
+            else if (error.message === "User lookup failed: record not found.") return c.newResponse(error.message, {status: 404})
             else console.log(error)
         }
     }
@@ -125,7 +128,8 @@ export class EventController {
             );
         } catch(error: any) {
             if (error.message === "No such event") return c.newResponse("Resource missing", {status: 409});
-            if (error.message === "No such username") return c.newResponse("Resource missing", {status: 409});
+            if (error.message === "No such username") return c.newResponse(error.message, {status: 409});
+            if (error.message === "Remove operation failed") return c.newResponse(error.message, {status: 500})
         }
     }
 
@@ -169,6 +173,19 @@ export class EventController {
                 data: result
             })
         } catch (error: any) {
+            console.log(error)
+        }
+    }
+
+    async queryAttendingUsers(c: Context) {
+        try {
+            const id =  c.req.param("id");
+            const result  = await this.eventService.getAttendingUser(id);
+            return c.json({
+                data: result
+            })
+            
+        } catch (error) {
             console.log(error)
         }
     }

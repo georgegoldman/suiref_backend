@@ -43,6 +43,20 @@ export class UserController {
         }
     }
 
+    async readUserByFromUsername(c: Context) {
+        try {
+            const username = c.req.param("username");
+            if(!username) return c.newResponse("username must be provided", {status: 400});
+            const r = await this.userService.getUserByUsername(username);
+            return c.json(
+                {data: r}
+            )
+        } catch (error: any) {
+            if (error.message === "User lookup failed: record not found.") return c.newResponse("Resource missing", {status: 404});
+            console.log(error);
+        }
+    }
+
     async readAll(c: Context) {
         try {
             const v = await this.userService.getAllUsers();
@@ -70,7 +84,7 @@ export class UserController {
 
     async deleteUser(c: Context){
         try {
-            const id:string = await c.req.param("id");
+            const id:string = c.req.param("id");
             const r = await this.userService.removeUser(id);
             return c.json({
                 data: r

@@ -17,5 +17,8 @@ eventRouter.delete("/event/:id", async (c) => await eventController.delete(c));
 eventRouter.post("/create-leaderboard", async(c) => await eventController.postLeaderboard(c));
 eventRouter.patch("/add-point", async(c) => await eventController.writePoint(c));
 eventRouter.get("/leaderboard", async(c) => await eventController.getAllLeaderboard(c))
+eventRouter.patch("/join", async(c) => await eventController.joinEvent(c));
+eventRouter.patch("/leave", async(c) => await eventController.leave(c));
+eventRouter.get("/get-attending-users/:id", async(c) => await eventController.queryAttendingUsers(c))
 
 export default eventRouter;

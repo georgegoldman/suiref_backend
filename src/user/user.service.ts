@@ -28,6 +28,12 @@ export class UserService {
         return record
     }
 
+    async getUserByUsername(username: string): Promise<any> {
+        const record = await this.userCollection.findOne({username});
+        if (!record) throw new Error("User lookup failed: record not found.");
+        return record
+    }
+
     async getAllUsers():Promise<any> {
         return await this.userCollection.find().toArray();
     }
